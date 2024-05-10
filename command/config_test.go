@@ -40,6 +40,7 @@ func TestLoadConfig_noExist(t *testing.T) {
 func TestParseConfig_badKeys(t *testing.T) {
 	_, err := ParseConfig(`
 token_helper = "/token"
+current_context = "vault-context"
 nope = "true"
 `)
 	if err == nil {

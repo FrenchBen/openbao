@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package config
+package api
 
 import (
 	"path/filepath"
@@ -18,7 +18,7 @@ func TestLoadConfig(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	expected := &DefaultConfig{
+	expected := &DefaultBaoConfig{
 		TokenHelper: "foo",
 	}
 	if !reflect.DeepEqual(expected, config) {

@@ -256,6 +256,26 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"config": func() (cli.Command, error) {
+			return &ConfigCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"config create": func() (cli.Command, error) {
+			return &ConfigCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"config list": func() (cli.Command, error) {
+			return &ConfigListCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"config use": func() (cli.Command, error) {
+			return &ConfigCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"debug": func() (cli.Command, error) {
 			return &DebugCommand{
 				BaseCommand: getBaseCommand(),

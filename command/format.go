@@ -16,6 +16,8 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	"github.com/ryanuber/columnize"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -590,22 +592,29 @@ func (t TableFormatter) OutputSecret(ui cli.Ui, secret *api.Secret) error {
 
 func (t TableFormatter) OutputMap(ui cli.Ui, data map[string]interface{}) error {
 	out := make([]string, 0, len(data)+1)
+	headers := []string{"Key"}
 	if len(data) > 0 {
-		keys := make([]string, 0, len(data))
-		for k := range data {
-			keys = append(keys, k)
+		keys := sortKeys(data, sortOptions{sorted: true})
+		// Check if data values have more than 1 dimension
+		switch f := data[keys[0]].(type) {
+		case map[string]interface{}:
+			headers = append([]string{"Context"}, sortKeys(f, sortOptions{title: true})...)
 		}
-		sort.Strings(keys)
 
 		for _, k := range keys {
 			v := data[k]
-
 			// If the field "looks" like a TTL, print it as a time duration instead.
 			if looksLikeDuration(k) {
 				v = humanDurationInt(v)
 			}
+			switch subv := v.(type) {
+			// output context as a larger table
+			case map[string]interface{}:
+				out = append(out, fmt.Sprintf("%s %s %s %s %s", k, hopeDelim, fmt.Sprintf("%s", subv["namespace"]), hopeDelim, fmt.Sprintf("%s", subv["server"])))
+			default:
+				out = append(out, fmt.Sprintf("%s %s %v", k, hopeDelim, v))
+			}
 
-			out = append(out, fmt.Sprintf("%s %s %v", k, hopeDelim, v))
 		}
 	}
 
@@ -616,7 +625,11 @@ func (t TableFormatter) OutputMap(ui cli.Ui, data map[string]interface{}) error 
 	}
 
 	// Prepend the header
-	out = append([]string{"Key" + hopeDelim + "Value"}, out...)
+	// out = append([]string{"Key" + hopeDelim + "Value"}, out...)
+	if len(headers) == 1 {
+		headers = append(headers, "Value")
+	}
+	out = append([]string{strings.Join(headers, hopeDelim)}, out...)
 
 	ui.Output(tableOutput(out, &columnize.Config{
 		Delim: hopeDelim,
@@ -660,6 +673,29 @@ func looksLikeDuration(k string) bool {
 		k == "ttl" || strings.HasSuffix(k, "_ttl") ||
 		k == "duration" || strings.HasSuffix(k, "_duration") ||
 		k == "lease_max" || k == "ttl_max"
+}
+
+type sortOptions struct {
+	sorted bool
+	title  bool
+}
+
+// sortKeys will take a map whose keys are strings,
+// values of any type, and will return the keys as a slice.
+// Based on the boolean of sorted, it will sort the slice.
+func sortKeys(data map[string]interface{}, opts sortOptions) []string {
+	keys := make([]string, 0, len(data))
+	caser := cases.Title(language.Und)
+	for k := range data {
+		if opts.title {
+			k = caser.String(k)
+		}
+		keys = append(keys, k)
+	}
+	if opts.sorted {
+		sort.Strings(keys)
+	}
+	return keys
 }
 
 // This struct is responsible for capturing all the fields to be output by a

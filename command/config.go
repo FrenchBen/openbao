@@ -4,54 +4,46 @@
 package command
 
 import (
-	"github.com/openbao/openbao/command/config"
+	"strings"
+
+	"github.com/mitchellh/cli"
 )
 
-const (
-	// DefaultConfigPath is the default path to the configuration file
-	DefaultConfigPath = "~/.bao"
+var _ cli.Command = (*ConfigCommand)(nil)
 
-	// ConfigPathEnv is the environment variable that can be used to
-	// override where the Vault configuration is.
-	ConfigPathEnv = "BAO_CONFIG_PATH"
-)
-
-// Config is the CLI configuration for Vault that can be specified via
-// a `$HOME/.vault` file which is HCL-formatted (therefore HCL or JSON).
-type DefaultConfig struct {
-	// TokenHelper is the executable/command that is executed for storing
-	// and retrieving the authentication token for the Vault CLI. If this
-	// is not specified, then vault's internal token store will be used, which
-	// stores the token on disk unencrypted.
-	TokenHelper string `hcl:"token_helper"`
+type ConfigCommand struct {
+	*BaseCommand
 }
 
-// Config loads the configuration and returns it. If the configuration
-// is already loaded, it is returned.
-//
-// Config just calls into config.Config for backwards compatibility purposes.
-// Use config.Config instead.
-func Config() (*DefaultConfig, error) {
-	conf, err := config.Config()
-	return (*DefaultConfig)(conf), err
+func (c *ConfigCommand) Synopsis() string {
+	return "Interact with config contexts"
 }
 
-// LoadConfig reads the configuration from the given path. If path is
-// empty, then the default path will be used, or the environment variable
-// if set.
-//
-// LoadConfig just calls into config.LoadConfig for backwards compatibility
-// purposes. Use config.LoadConfig instead.
-func LoadConfig(path string) (*DefaultConfig, error) {
-	conf, err := config.LoadConfig(path)
-	return (*DefaultConfig)(conf), err
+func (c *ConfigCommand) Help() string {
+	helpText := `
+Usage: bao config <subcommand> [options] [args]
+
+  This command groups subcommands for interacting with Vault configs.
+  These subcommands operate on the contexts of Vault servers
+
+  Describe one or many contexts:
+
+      $ bao config list
+
+  Set a context entry in bao config:
+
+      $ bao config create vault-1 -server https://1.2.3.4 -namespace xyz
+
+  Set the current-context in bao config:
+
+      $ bao config use vault-1
+
+  Please see the individual subcommand help for detailed usage information.
+`
+
+	return strings.TrimSpace(helpText)
 }
 
-// ParseConfig parses the given configuration as a string.
-//
-// ParseConfig just calls into config.ParseConfig for backwards compatibility
-// purposes. Use config.ParseConfig instead.
-func ParseConfig(contents string) (*DefaultConfig, error) {
-	conf, err := config.ParseConfig(contents)
-	return (*DefaultConfig)(conf), err
+func (c *ConfigCommand) Run(args []string) int {
+	return cli.RunResultHelp
 }

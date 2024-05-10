@@ -186,6 +186,8 @@ type Config struct {
 	// primary node.
 	DisableRedirects bool
 	clientTLSConfig  *tls.Config
+	// Namespaces are isolated environments
+	Namespace string
 }
 
 // TLSConfig contains the parameters needed to configure TLS on the HTTP client
@@ -242,6 +244,11 @@ func DefaultConfig() *Config {
 		MinVersion: tls.VersionTLS12,
 	}
 	if err := http2.ConfigureTransport(transport); err != nil {
+		config.Error = err
+		return config
+	}
+
+	if err := config.ReadConfig(); err != nil {
 		config.Error = err
 		return config
 	}
@@ -340,10 +347,32 @@ func (c *Config) ConfigureTLS(t *TLSConfig) error {
 	return c.configureTLS(t)
 }
 
+// ReadConfig reads configuration information from the defaultConfigPath. If
+// there is an error, no configuration value is updated.
+func (c *Config) ReadConfig() error {
+	context, err := CurrentContext()
+	if err != nil {
+		return err
+	}
+
+	c.modifyLock.Lock()
+	defer c.modifyLock.Unlock()
+
+	if context.Namespace != "" {
+		c.Namespace = context.Namespace
+	}
+	if context.Server != "" {
+		c.Address = context.Server
+	}
+
+	return nil
+}
+
 // ReadEnvironment reads configuration information from the environment. If
 // there is an error, no configuration value is updated.
 func (c *Config) ReadEnvironment() error {
 	var envAddress string
+	var envNamespace string
 	var envAgentAddress string
 	var envCACert string
 	var envCACertBytes []byte
@@ -362,6 +391,9 @@ func (c *Config) ReadEnvironment() error {
 	// Parse the environment variables
 	if v := ReadBaoVariable(EnvVaultAddress); v != "" {
 		envAddress = v
+	}
+	if v := ReadBaoVariable(EnvVaultNamespace); v != "" {
+		envNamespace = v
 	}
 	if v := ReadBaoVariable(EnvVaultAgentAddr); v != "" {
 		envAgentAddress = v
@@ -463,6 +495,10 @@ func (c *Config) ReadEnvironment() error {
 
 	if envAddress != "" {
 		c.Address = envAddress
+	}
+
+	if envNamespace != "" {
+		c.Namespace = envNamespace
 	}
 
 	if envAgentAddress != "" {
@@ -624,8 +660,8 @@ func NewClient(c *Config) (*Client, error) {
 		client.token = token
 	}
 
-	if namespace := ReadBaoVariable(EnvVaultNamespace); namespace != "" {
-		client.setNamespace(namespace)
+	if c.Namespace != "" {
+		client.setNamespace(c.Namespace)
 	}
 
 	return client, nil
